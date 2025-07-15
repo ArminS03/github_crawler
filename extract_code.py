@@ -93,7 +93,7 @@ Respond with fields:
     )
     event = resp.choices[0].message.parsed
     # print(event.dict())
-    return event.dict()
+    return event.model_dump()
 
 def process_repository(url: str, temp_dir: Path, output_dir: str) -> None:
     repo_path = clone_repo(url, temp_dir)
@@ -108,9 +108,10 @@ def process_repository(url: str, temp_dir: Path, output_dir: str) -> None:
             if not analysis["produces_plot"]:
                 continue
             print("^"*130)
-            code_output_file = f"{output_dir}/{repo_path.name}__{py_file.stem}_code.py"
-            orig_code_output_file = f"{output_dir}/{repo_path.name}__{py_file.stem}_orig_code.py"
-            description_output_file = f"{output_dir}/{repo_path.name}__{py_file.stem}_description.py"
+            os.makedirs(f"{output_dir}/{repo_path.name}", exist_ok=True)
+            code_output_file = f"{output_dir}/{repo_path.name}/{py_file.stem}_code.py"
+            orig_code_output_file = f"{output_dir}/{repo_path.name}/{py_file.stem}_code_orig.py"
+            description_output_file = f"{output_dir}/{repo_path.name}/{py_file.stem}_description.py"
             
             
             
