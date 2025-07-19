@@ -3,6 +3,7 @@ from bs4 import BeautifulSoup
 from tqdm import tqdm
 import pandas as pd
 import os
+import time
 
 def crawl_page(page, pdf_dir):
     base_url = "https://paperswithcode.com/latest"
@@ -12,12 +13,14 @@ def crawl_page(page, pdf_dir):
     response = requests.get(url)
     if response.status_code != 200:
         print(f"Failed to fetch page {page}")
+        print(response.content)
         return results
     print(url)
     soup = BeautifulSoup(response.text, "html.parser")
     papers = soup.find_all("div", class_="infinite-item")
     os.makedirs(pdf_dir, exist_ok=True)
     for paper in tqdm(papers, total=len(papers)):
+        time.sleep(2)
         page_link = paper.find("a", class_="badge badge-dark")
         github_url = None
         pdf_url = None
@@ -34,6 +37,9 @@ def crawl_page(page, pdf_dir):
                 github_a = page_soup.find("a", href=lambda x: x and "github.com" in x)
                 if github_a:
                     github_url = github_a["href"].strip()
+            else:
+                print(page_resp.content)
+                continue
             
             try:
                 download_a = page_soup.find("a", href=lambda x: x and ".pdf" in x)
@@ -85,4 +91,4 @@ def crawl_paperswithcode(num_pages, output_csv, pdf_dir):
     print(f"Final results saved to {output_csv}, total entries: {len(df)}")
 
 if __name__ == "__main__":
-    crawl_paperswithcode(num_pages=10, output_csv="crawled_links.csv", pdf_dir="./PDFs")
+    crawl_paperswithcode(num_pages=30, output_csv="crawled_links.csv", pdf_dir="./PDFs")
