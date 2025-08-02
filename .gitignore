@@ -1,4 +1,6 @@
-**/gather_data
+**/data
 **/tmp
 **/PDFs
+**/gather_data
+**/matched_outputs
 **.env

@@ -27,15 +27,16 @@ def process_pdfs(gather_data_folder, pdfs_folder):
         pdf_filename = f"{folder_name}.pdf"
         pdf_path = os.path.join(pdfs_folder, pdf_filename)
 
-        if os.path.exists(pdf_path):
-            print(f"Processing {pdf_filename}...")
-            extract_images_from_pdf(pdf_path, folder_path)
-        else:
-            print(f"PDF not found for folder: {folder_name}")
+        # if os.path.exists(pdf_path):
+        print(f"Processing {pdf_filename}...")
+        extract_images_from_pdf(pdf_path, folder_path)
+        # else:
+        #     print(f"PDF not found for folder: {folder_name}")
 
 
-# Set your paths
-gather_data_folder = "./gather_data"
-pdfs_folder = "./PDFs"
+if __name__ == "__main__":
+    # Set your paths
+    gather_data_folder = "./gather_data"
+    pdfs_folder = "./PDFs"
 
-process_pdfs(gather_data_folder, pdfs_folder)
+    process_pdfs(gather_data_folder, pdfs_folder)
