@@ -3,6 +3,7 @@ import fitz
 
 
 def extract_images_from_pdf(pdf_path, output_folder):
+    os.makedirs(output_folder, exist_ok=True)
     doc = fitz.open(pdf_path)
     for page_num, page in enumerate(doc, start=1):
         images = page.get_images(full=True)

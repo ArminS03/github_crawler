@@ -3,17 +3,23 @@ import gzip
 import io
 import json
 import os
+from pathlib import Path
+import csv
+import pandas as pd
 
 import requests
 
-DATA_DIR = "./data"
-GITHUB_DIR = "./data/git_repo"
-TMP_DIR = "./data/tmp"
-PDF_DIR = "./data/PDF"
-OUTPUT_DIR = "./data/output"
+DATA_DIR = Path("./data")
+GITHUB_DIR = Path("./data/git_repo")
+TMP_DIR = Path("./data/tmp")
+PDF_DIR = Path("./data/PDF")
+OUTPUT_DIR = Path("./data/output")
+CSV_FILE = "./manifest.csv"
+CSV_FIELDS = ["index", "repo_url", "paper_url_pdf", "repo_name", "description", "status", "error"]
 
 from extract_code import check_for_plotting_libraries, clone_repo, find_python_files
 from extract_images import extract_images_from_pdf
+from generate_dataset_vlm import process_project
 
 
 class Format(str, enum.Enum):
@@ -46,12 +52,14 @@ def process_repo(url: str):
         with open(orig_code_output_file, "w", encoding="utf8") as f:
             f.write(content)
 
-        print(f"-> Extracted plot code to {orig_code_output_file}")
-
 
 def download_pdf(download_link: str, name: str):
     pdf_response = requests.get(download_link, stream=True)
     pdf_filename = os.path.join(PDF_DIR, name + ".pdf")
+    
+    if os.path.exists(pdf_filename):
+        return pdf_filename
+    
     with open(pdf_filename, "wb") as f:
         for chunk in pdf_response.iter_content(chunk_size=8192):
             if chunk:
@@ -61,35 +69,57 @@ def download_pdf(download_link: str, name: str):
 
 if __name__ == "__main__":
     data_points = load("./links-between-papers-and-code.json.gz", fmt=Format.json_gz)
-    print(data_points[0])
-
+    
+    if not os.path.exists(CSV_FILE):
+        with open(CSV_FILE, "w", newline="", encoding="utf-8") as f:
+            writer = csv.DictWriter(f, fieldnames=CSV_FIELDS)
+            writer.writeheader()
+            
+    try:
+        df = pd.read_csv(CSV_FILE)
+        processed_indices = set(df["index"].tolist())
+    except Exception as e:
+        print("Error reading CSV log:", e)
+        processed_indices = set()
+    
     os.makedirs(DATA_DIR, exist_ok=True)
     os.makedirs(GITHUB_DIR, exist_ok=True)
     os.makedirs(TMP_DIR, exist_ok=True)
     os.makedirs(PDF_DIR, exist_ok=True)
     os.makedirs(OUTPUT_DIR, exist_ok=True)
 
-    counter = 0
-    counter_file = "./counter.txt"
-    if os.path.exists(counter_file):
-        try:
-            with open(counter_file, "r") as file:
-                counter = int(file.read())
-        except Exception as e:
-            print(e)
-
-    for index in range(counter, len(data_points)):
-        if index % 10 == 0:
-            with open(counter_file, "w") as file:
-                file.write(str(counter))
+    for index in range(len(data_points)):
+        # df.loc[df["index"]==0, "status"].iloc[0] == "failed"
+        if (index in processed_indices):
+            continue
 
         data = data_points[index]
-        guthub_url = data["repo_url"]
+        github_url = data["repo_url"]
         pdf_url = data["paper_url_pdf"]
-        repo_name = guthub_url.rstrip("/").split("/")[-1]
+        repo_name = github_url.rstrip("/").split("/")[-1]
+        description = None
 
-        process_repo(guthub_url)
-        pdf_filename = download_pdf(pdf_url, repo_name)
-        extract_images_from_pdf(pdf_filename, os.path.join(OUTPUT_DIR, repo_name))
+        try:
+            process_repo(github_url)
+            pdf_filename = download_pdf(pdf_url, repo_name)
+            extract_images_from_pdf(pdf_filename, os.path.join(OUTPUT_DIR, repo_name))
+            description = process_project(repo_name, GITHUB_DIR, OUTPUT_DIR)
+            status = "success"
+            error = ""
+        except Exception as e:
+            status = "failed"
+            error = str(e)
 
-        counter += 1
+        # Append to CSV
+        with open(CSV_FILE, "a", newline="", encoding="utf-8") as f:
+            writer = csv.DictWriter(f, fieldnames=CSV_FIELDS)
+            writer.writerow({
+                "index": index,
+                "repo_url": github_url,
+                "paper_url_pdf": pdf_url,
+                "repo_name": repo_name,
+                "description": description,
+                "status": status,
+                "error": error[:min(len(error), 200)]
+            })
+

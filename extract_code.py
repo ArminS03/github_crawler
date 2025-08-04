@@ -16,7 +16,7 @@ FIGURE_LIBRARIES = ["matplotlib", "seaborn", "plotly", "bokeh", "altair", "ggplo
 #     description: str
 
 
-def clone_repo(url: str, dest: str) -> Path:
+def clone_repo(url: Path, dest: Path) -> Path:
     repo_name = url.rstrip("/").split("/")[-1]
     clone_path = dest / repo_name
 

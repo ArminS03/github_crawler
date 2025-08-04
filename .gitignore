@@ -1,6 +1,4 @@
 **/data
-**/tmp
-**/PDFs
-**/gather_data
-**/matched_outputs
 **.env
+**.gz
+**/__pycache__
