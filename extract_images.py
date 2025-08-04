@@ -1,10 +1,11 @@
 import os
 import fitz
+import shutil
 
-
-def extract_images_from_pdf(pdf_path, output_folder):
-    os.makedirs(output_folder, exist_ok=True)
+def extract_images_from_pdf(pdf_path, image_folder):
+    os.makedirs(image_folder, exist_ok=True)
     doc = fitz.open(pdf_path)
+    flag = False
     for page_num, page in enumerate(doc, start=1):
         images = page.get_images(full=True)
         for img_index, img in enumerate(images, start=1):
@@ -13,10 +14,14 @@ def extract_images_from_pdf(pdf_path, output_folder):
             image_bytes = base_image["image"]
             image_ext = base_image["ext"]
             image_filename = f"page{page_num}_img{img_index}.{image_ext}"
-            image_path = os.path.join(output_folder, image_filename)
+            image_path = os.path.join(image_folder, image_filename)
             with open(image_path, "wb") as img_file:
                 img_file.write(image_bytes)
+            flag = True   
     doc.close()
+    if not flag:
+        shutil.rmtree(image_folder)
+        raise ValueError("No images detected in the pdf.")
 
 
 def process_pdfs(gather_data_folder, pdfs_folder):

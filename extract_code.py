@@ -23,7 +23,7 @@ def clone_repo(url: Path, dest: Path) -> Path:
     if clone_path.exists():
         print(f"Repository already exists {repo_name}, skipping clone.")
         return clone_path
-
+    print(f"cloning repo: {repo_name}")
     Repo.clone_from(url, clone_path)
     return clone_path
 

@@ -6,14 +6,17 @@ import os
 from pathlib import Path
 import csv
 import pandas as pd
+import shutil
+import stat
 
 import requests
 
 DATA_DIR = Path("./data")
-GITHUB_DIR = Path("./data/git_repo")
+GITHUB_DIR = Path("./data/git_snippets")
 TMP_DIR = Path("./data/tmp")
 PDF_DIR = Path("./data/PDF")
 OUTPUT_DIR = Path("./data/output")
+IMAGE_DIR = Path("./data/images")
 CSV_FILE = "./manifest.csv"
 CSV_FIELDS = ["index", "repo_url", "paper_url_pdf", "repo_name", "description", "status", "error"]
 
@@ -26,6 +29,9 @@ class Format(str, enum.Enum):
     json = "json"
     json_gz = "json.gz"
 
+def on_rm_error(func, path, exc_info):
+    os.chmod(path, stat.S_IWRITE)
+    func(path)
 
 def load(filename, fmt=Format.json, encoding="utf-8"):
     if fmt == Format.json:
@@ -41,16 +47,20 @@ def load(filename, fmt=Format.json, encoding="utf-8"):
 def process_repo(url: str):
     repo_path = clone_repo(url, TMP_DIR)
     py_files = find_python_files(repo_path)
+    flag = False
     for py_file in py_files:
         content = py_file.read_text(encoding="utf-8", errors="ignore")
         if not check_for_plotting_libraries(content):
             continue
-
+        flag = True
         os.makedirs(f"{GITHUB_DIR}/{repo_path.name}", exist_ok=True)
         orig_code_output_file = f"{GITHUB_DIR}/{repo_path.name}/{py_file.stem}.py"
 
         with open(orig_code_output_file, "w", encoding="utf8") as f:
             f.write(content)
+    if not flag:
+        shutil.rmtree(repo_path, onerror=on_rm_error)
+        raise ValueError("No Plotting Code!")
 
 
 def download_pdf(download_link: str, name: str):
@@ -87,6 +97,7 @@ if __name__ == "__main__":
     os.makedirs(TMP_DIR, exist_ok=True)
     os.makedirs(PDF_DIR, exist_ok=True)
     os.makedirs(OUTPUT_DIR, exist_ok=True)
+    os.makedirs(IMAGE_DIR, exist_ok=True)
 
     for index in range(len(data_points)):
         # df.loc[df["index"]==0, "status"].iloc[0] == "failed"
@@ -102,8 +113,8 @@ if __name__ == "__main__":
         try:
             process_repo(github_url)
             pdf_filename = download_pdf(pdf_url, repo_name)
-            extract_images_from_pdf(pdf_filename, os.path.join(OUTPUT_DIR, repo_name))
-            description = process_project(repo_name, GITHUB_DIR, OUTPUT_DIR)
+            extract_images_from_pdf(pdf_filename, os.path.join(IMAGE_DIR, repo_name))
+            # description = process_project(repo_name, GITHUB_DIR, OUTPUT_DIR)
             status = "success"
             error = ""
         except Exception as e:
@@ -120,6 +131,6 @@ if __name__ == "__main__":
                 "repo_name": repo_name,
                 "description": description,
                 "status": status,
-                "error": error[:min(len(error), 200)]
+                "error": error[:min(len(error), 100)]
             })
 
