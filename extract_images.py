@@ -1,8 +1,16 @@
 import os
-import fitz
 import shutil
+import stat
 
-def extract_images_from_pdf(pdf_path, image_folder):
+import fitz
+
+
+def on_rm_error(func, path, exc_info):
+    os.chmod(path, stat.S_IWRITE)
+    func(path)
+
+
+def extract_images_from_pdf(pdf_path, image_folder, code_folder):
     os.makedirs(image_folder, exist_ok=True)
     doc = fitz.open(pdf_path)
     flag = False
@@ -17,10 +25,11 @@ def extract_images_from_pdf(pdf_path, image_folder):
             image_path = os.path.join(image_folder, image_filename)
             with open(image_path, "wb") as img_file:
                 img_file.write(image_bytes)
-            flag = True   
+            flag = True
     doc.close()
     if not flag:
         shutil.rmtree(image_folder)
+        shutil.rmtree(code_folder, onerror=on_rm_error)
         raise ValueError("No images detected in the pdf.")
 
 
